@@ -1,0 +1,48 @@
+# -*- coding: utf-8 -*-
+"""
+入力の中の1の数を数えるプログラム
+Copyright(c) 2019 Koji Makino and Hiromitsu Nishizaki All Rights Reserved.
+"""
+import numpy as np
+import chainer
+import chainer.functions as F
+import chainer.links as L
+import chainer.initializers as I
+from chainer import training
+from chainer.training import extensions
+
+class MyChain(chainer.Chain):
+    def __init__(self):
+        super(MyChain, self).__init__()
+        with self.init_scope():
+            self.l1 = L.Linear(3, 6) # 入力3，中間層6
+            self.l2 = L.Linear(6, 6) # 中間層6，中間層6
+            self.l3 = L.Linear(6, 4) # 中間層6，出力4
+    def __call__(self, x):
+        h1 = F.relu(self.l1(x))
+        h2 = F.relu(self.l2(h1))
+        y = self.l3(h2)
+        return y        
+
+epoch = 1000
+batchsize = 8
+
+# データの作成
+with open('test_data.txt', 'r') as f:
+    lines = f.readlines()
+
+data = []
+for l in lines:
+    d = l.strip().split()
+    data.append(list(map(int, d)))
+trainx = np.array(data, dtype=np.float32)
+
+# ニューラルネットワークの登録
+model = L.Classifier(MyChain(), lossfun=F.softmax_cross_entropy)
+chainer.serializers.load_npz("result/out.model", model)
+
+# 学習結果の評価
+for i in range(len(trainx)):
+    x = chainer.Variable(trainx[i].reshape(1,3))
+    result = F.softmax(model.predictor(x))
+    print("input: {}, result: {}".format(trainx[i], result.data.argmax()))
